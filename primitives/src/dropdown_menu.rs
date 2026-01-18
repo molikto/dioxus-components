@@ -264,10 +264,7 @@ pub fn DropdownMenuTrigger(props: DropdownMenuTriggerProps) -> Element {
         dynamic.call(merged)
     } else {
         rsx! {
-            button {
-                ..merged,
-                {props.children}
-            }
+            button { ..merged,{props.children} }
         }
     }
 }
@@ -471,9 +468,148 @@ pub fn DropdownMenuItem<T: Clone + PartialEq + 'static>(
                     ctx.focus.blur();
                 }
             },
-
             ..props.attributes,
             {props.children}
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct DropdownSubContext {
+    open: Memo<bool>,
+    set_open: Callback<bool>,
+    trigger_id: Signal<String>,
+}
+
+/// Props for a submenu wrapper. Wrap a `DropdownMenuSubTrigger` and `DropdownMenuSubContent`.
+#[derive(Props, Clone, PartialEq)]
+pub struct DropdownMenuSubProps {
+    /// Whether the submenu is open (controlled)
+    pub open: ReadSignal<Option<bool>>,
+
+    /// Default open state if uncontrolled
+    #[props(default)]
+    pub default_open: bool,
+
+    /// Callback when open state changes
+    #[props(default)]
+    pub on_open_change: Callback<bool>,
+
+    /// Additional attributes applied to the submenu container
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// Children (should include a `DropdownMenuSubTrigger` and `DropdownMenuSubContent`)
+    pub children: Element,
+}
+
+/// A container for a submenu. Provides submenu open state to its children via context.
+#[component]
+pub fn DropdownMenuSub(props: DropdownMenuSubProps) -> Element {
+    let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
+    let trigger_id = use_unique_id();
+
+    use_context_provider(|| DropdownSubContext { open, set_open, trigger_id });
+
+    let set_open_clone = set_open.clone();
+
+    rsx! {
+        div {
+            class: "dropdown-sub",
+            "data-state": if (open)() { "open" } else { "closed" },
+            onmouseenter: move |_| {
+                set_open_clone.call(true);
+            },
+            onmouseleave: move |_| {
+                set_open_clone.call(false);
+            },
+            ..props.attributes,
+            {props.children}
+        }
+    }
+}
+
+/// Props for the submenu trigger element
+#[derive(Props, Clone, PartialEq)]
+pub struct DropdownMenuSubTriggerProps {
+    /// Render the trigger element as a custom component/element.
+    #[props(default)]
+    pub r#as: Option<Callback<Vec<Attribute>, Element>>,
+
+    /// Additional attributes to apply to the trigger element.
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// Children of the trigger
+    pub children: Element,
+}
+
+/// The trigger for a submenu. Toggles the submenu open state.
+#[component]
+pub fn DropdownMenuSubTrigger(props: DropdownMenuSubTriggerProps) -> Element {
+    let ctx: DropdownSubContext = use_context();
+    let open = ctx.open;
+    let set_open = ctx.set_open;
+
+    let base = attributes!(div {
+        role: "menuitem",
+        "data-state": if open() { "open" } else { "closed" },
+        "aria-expanded": open,
+        "aria-haspopup": "menu",
+        onclick: move |e: Event<MouseData>| {
+            e.stop_propagation();
+            let new = !open();
+            set_open.call(new);
+        },
+    });
+
+    let merged = merge_attributes(vec![base, props.attributes]);
+
+    if let Some(dynamic) = props.r#as {
+        dynamic.call(merged)
+    } else {
+        rsx! {
+            div { ..merged,{props.children} }
+        }
+    }
+}
+
+/// Props for the submenu content element
+#[derive(Props, Clone, PartialEq)]
+pub struct DropdownMenuSubContentProps {
+    /// The ID for the submenu content element
+    pub id: ReadSignal<Option<String>>,
+
+    /// Additional attributes to apply to the submenu content element
+    #[props(extends = GlobalAttributes)]
+    pub attributes: Vec<Attribute>,
+
+    /// Children (menu items)
+    pub children: Element,
+}
+
+/// The contents of a submenu. Rendered when the parent `DropdownMenuSub` is open.
+#[component]
+pub fn DropdownMenuSubContent(props: DropdownMenuSubContentProps) -> Element {
+    let ctx: DropdownSubContext = use_context();
+
+    let unique_id = use_unique_id();
+    let id = use_id_or(unique_id, props.id);
+    let render = use_animated_open(id, ctx.open);
+
+    rsx! {
+        if render() {
+            div {
+                id,
+                role: "menu",
+                "data-state": if (ctx.open)() { "open" } else { "closed" },
+                onpointerdown: move |event| {
+                    event.prevent_default();
+                    event.stop_propagation();
+                },
+                ..props.attributes,
+                {props.children}
+            }
         }
     }
 }

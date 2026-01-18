@@ -1,8 +1,14 @@
 use dioxus::prelude::*;
 use dioxus_primitives::dioxus_attributes::attributes;
 use dioxus_primitives::dropdown_menu::{
-    self, DropdownMenuContentProps, DropdownMenuItemProps, DropdownMenuProps,
+    self,
+    DropdownMenuContentProps,
+    DropdownMenuItemProps,
+    DropdownMenuProps,
     DropdownMenuTriggerProps,
+    DropdownMenuSubProps,
+    DropdownMenuSubTriggerProps,
+    DropdownMenuSubContentProps,
 };
 use dioxus_primitives::merge_attributes;
 
@@ -61,5 +67,41 @@ pub fn DropdownMenuItem<T: Clone + PartialEq + 'static>(
             attributes: merged,
             {props.children}
         }
+    }
+}
+
+#[component]
+pub fn DropdownMenuSub(props: DropdownMenuSubProps) -> Element {
+    let base = attributes!(div { class: "dropdown-menu-sub" });
+    let merged = merge_attributes(vec![base, props.attributes.clone()]);
+
+    rsx! {
+        dropdown_menu::DropdownMenuSub {
+            open: props.open,
+            default_open: props.default_open,
+            on_open_change: props.on_open_change,
+            attributes: merged,
+            {props.children}
+        }
+    }
+}
+
+#[component]
+pub fn DropdownMenuSubTrigger(props: DropdownMenuSubTriggerProps) -> Element {
+    let base = attributes!(div { class: "dropdown-menu-sub-trigger" });
+    let merged = merge_attributes(vec![base, props.attributes]);
+
+    rsx! {
+        dropdown_menu::DropdownMenuSubTrigger { r#as: props.r#as, attributes: merged, {props.children} }
+    }
+}
+
+#[component]
+pub fn DropdownMenuSubContent(props: DropdownMenuSubContentProps) -> Element {
+    let base = attributes!(div { class: "dropdown-menu-sub-content" });
+    let merged = merge_attributes(vec![base, props.attributes.clone()]);
+
+    rsx! {
+        dropdown_menu::DropdownMenuSubContent { id: props.id, attributes: merged, {props.children} }
     }
 }
