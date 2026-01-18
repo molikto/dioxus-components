@@ -1,0 +1,5 @@
+{
+  "name": "Virtual List",
+  "description": "Efficiently renders large lists by only rendering visible items. Supports dynamically sized items.",
+  "default": "main"
+}

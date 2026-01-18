@@ -153,4 +153,5 @@ examples!(
     toggle,
     toolbar,
     tooltip,
+    virtual_list,
 );
