@@ -22,11 +22,10 @@ pub fn Demo() -> Element {
     let mut selected_operation = use_signal(|| None);
 
     rsx! {
-        DropdownMenu { class: "dropdown-menu", default_open: false,
-            DropdownMenuTrigger { class: "dropdown-menu-trigger", "Open Menu" }
-            DropdownMenuContent { class: "dropdown-menu-content",
+        DropdownMenu { default_open: false,
+            DropdownMenuTrigger { "Open Menu" }
+            DropdownMenuContent {
                 DropdownMenuItem::<Operation> {
-                    class: "dropdown-menu-item",
                     value: Operation::Edit,
                     index: 0usize,
                     on_select: move |value| {
@@ -36,7 +35,6 @@ pub fn Demo() -> Element {
                 }
 
                 DropdownMenuItem::<Operation> {
-                    class: "dropdown-menu-item",
                     value: Operation::Undo,
                     index: 1usize,
                     disabled: true,
@@ -47,10 +45,9 @@ pub fn Demo() -> Element {
                 }
 
                 DropdownMenuSub { default_open: false,
-                    DropdownMenuSubTrigger { class: "dropdown-menu-sub-trigger", "More" }
-                    DropdownMenuSubContent { class: "dropdown-menu-sub-content",
+                    DropdownMenuSubTrigger { "More" }
+                    DropdownMenuSubContent {
                         DropdownMenuItem::<Operation> {
-                            class: "dropdown-menu-item",
                             value: Operation::Duplicate,
                             index: 2usize,
                             on_select: move |value| {
@@ -60,7 +57,6 @@ pub fn Demo() -> Element {
                         }
 
                         DropdownMenuItem::<Operation> {
-                            class: "dropdown-menu-item",
                             value: Operation::Delete,
                             index: 3usize,
                             on_select: move |value| {
