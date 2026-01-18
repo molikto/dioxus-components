@@ -7,12 +7,12 @@ use std::collections::HashMap;
 
 /// Props for the VirtualList component
 #[derive(Props, Clone, PartialEq)]
-pub struct VirtualListProps<T: Clone + PartialEq + 'static> {
-    /// The data items to render
-    pub data: ReadSignal<Vec<T>>,
+pub struct VirtualListProps {
+    /// The number of items in the list
+    pub data_len: ReadSignal<usize>,
 
-    /// Function that renders each item given its index and data
-    pub item_content: Callback<(usize, T), Element>,
+    /// Function that renders each item given its index
+    pub item_content: Callback<usize, Element>,
 
     /// Height of the container (e.g., "400px", "100%")
     #[props(default = "400px".to_string())]
@@ -68,13 +68,13 @@ struct ItemMeasurement {
 ///
 ///     rsx! {
 ///         VirtualList {
-///             data: users,
+///             data_len: users.len(),
 ///             height: "100%".to_string(),
-///             item_content: move |(index, user): (usize, User)| rsx! {
+///             item_content: move |index: usize| rsx! {
 ///                 div {
 ///                     style: "padding: 0.5rem; border-bottom: 1px solid #ccc;",
-///                     p { strong { "{user.name}" } }
-///                     div { "{user.description}" }
+///                     p { strong { "{users()[index].name}" } }
+///                     div { "{users()[index].description}" }
 ///                 }
 ///             }
 ///         }
@@ -82,14 +82,13 @@ struct ItemMeasurement {
 /// }
 /// ```
 #[component]
-pub fn VirtualList<T: Clone + PartialEq + 'static>(props: VirtualListProps<T>) -> Element {
+pub fn VirtualList(props: VirtualListProps) -> Element {
     let mut scroll_top = use_signal(|| 0.0);
     let mut container_height = use_signal(|| 400.0);
     let item_heights = use_signal(|| HashMap::<usize, f64>::new());
     let mut item_offsets = use_signal(|| HashMap::<usize, f64>::new());
 
-    let data = props.data;
-    let item_count = use_memo(move || data().len());
+    let item_count = props.data_len;
 
     // Calculate total height and item offsets
     let measurements = use_memo(move || {
@@ -172,29 +171,21 @@ pub fn VirtualList<T: Clone + PartialEq + 'static>(props: VirtualListProps<T>) -
 
     // Generate visible items
     let items = (start_idx..end_idx).map(|i| {
-        let item_data = data().get(i).cloned();
+        let item_content = props.item_content.clone();
+        let mut heights_signal = item_heights;
         
-        if let Some(item) = item_data {
-            let item_content = props.item_content.clone();
-            let mut heights_signal = item_heights;
-            
-            rsx! {
-                div {
-                    key: "{i}",
-                    "data-index": i,
-                    onmounted: move |e: MountedEvent| {
-                        spawn(async move {
-                            if let Ok(rect) = e.get_client_rect().await {
-                                heights_signal.write().insert(i, rect.size.height);
-                            }
-                        });
-                    },
-                    {item_content.call((i, item))}
-                }
-            }
-        } else {
-            rsx! {
-                div { key: "{i}" }
+        rsx! {
+            div {
+                key: "{i}",
+                "data-index": i,
+                onmounted: move |e: MountedEvent| {
+                    spawn(async move {
+                        if let Ok(rect) = e.get_client_rect().await {
+                            heights_signal.write().insert(i, rect.size.height);
+                        }
+                    });
+                },
+                {item_content.call(i)}
             }
         }
     });

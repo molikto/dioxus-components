@@ -29,16 +29,19 @@ pub fn Demo() -> Element {
             h2 { style: "margin-bottom: 1rem;", "Virtual List Demo (10,000 items)" }
 
             VirtualList {
-                data: users,
+                data_len: users().len(),
                 height: "500px".to_string(),
                 estimated_item_height: 80.0,
                 overscan: 5,
-                item_content: move |(_, user): (usize, User)| rsx! {
-                    div { class: "virtual-list-item", style: "height: {user.size}px;",
-                        p {
-                            strong { "{user.name}" }
+                item_content: move |index: usize| {
+                    let user = &users.read()[index];
+                    rsx! {
+                        div { class: "virtual-list-item", style: "height: {user.size}px;",
+                            p {
+                                strong { "{user.name}" }
+                            }
+                            div { "{user.description}" }
                         }
-                        div { "{user.description}" }
                     }
                 },
             }
