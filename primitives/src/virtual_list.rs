@@ -8,6 +8,10 @@ use std::collections::HashMap;
 /// Props for the VirtualList component
 #[derive(Props, Clone, PartialEq)]
 pub struct VirtualListProps {
+    /// Disable virtualization and render all items
+    #[props(default = false)]
+    pub disable_virtualization: bool,
+
     /// The number of items in the list
     pub data_len: ReadSignal<usize>,
 
@@ -79,6 +83,17 @@ struct ItemMeasurement {
 /// ```
 #[component]
 pub fn VirtualList(props: VirtualListProps) -> Element {
+    if props.disable_virtualization {
+        // Render all items without virtualization
+        let items = (0..*props.data_len.read()).map(|i| {
+            let item_content = props.item_content.clone();
+            item_content.call(i)
+        });
+
+        return rsx! {
+            div { ..props.attributes,{items} }
+        };
+    }
     let mut scroll_top = use_signal(|| 0.0);
     let mut container_height = use_signal(|| 400.0);
     let item_heights = use_signal(|| HashMap::<usize, f64>::new());
