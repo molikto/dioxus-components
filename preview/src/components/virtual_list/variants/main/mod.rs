@@ -1,4 +1,4 @@
-use super::super::component::VirtualList;
+use super::super::VirtualList;
 use dioxus::prelude::*;
 
 #[derive(Clone, PartialEq)]

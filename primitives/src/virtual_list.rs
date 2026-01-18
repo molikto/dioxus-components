@@ -14,10 +14,6 @@ pub struct VirtualListProps {
     /// Function that renders each item given its index
     pub item_content: Callback<usize, Element>,
 
-    /// Height of the container (e.g., "400px", "100%")
-    #[props(default = "400px".to_string())]
-    pub height: String,
-
     /// Estimated item height for initial render (before measuring)
     #[props(default = 50.0)]
     pub estimated_item_height: f64,
@@ -69,7 +65,7 @@ struct ItemMeasurement {
 ///     rsx! {
 ///         VirtualList {
 ///             data_len: users.len(),
-///             height: "100%".to_string(),
+///             style: "height: 100%;",
 ///             item_content: move |index: usize| rsx! {
 ///                 div {
 ///                     style: "padding: 0.5rem; border-bottom: 1px solid #ccc;",
@@ -98,14 +94,11 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
         let mut measurements = HashMap::new();
 
         for i in 0..count {
-            let height = heights.get(&i).copied().unwrap_or(props.estimated_item_height);
-            measurements.insert(
-                i,
-                ItemMeasurement {
-                    height,
-                    offset,
-                },
-            );
+            let height = heights
+                .get(&i)
+                .copied()
+                .unwrap_or(props.estimated_item_height);
+            measurements.insert(i, ItemMeasurement { height, offset });
             offset += height;
         }
 
@@ -155,8 +148,14 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
         // Find end index
         let mut visible_end = start;
         let mut accumulated_height = 0.0;
-        while visible_end < count && accumulated_height < viewport_height + (props.estimated_item_height * props.overscan as f64) {
-            let height = measurements_val.get(&visible_end).map(|m| m.height).unwrap_or(props.estimated_item_height);
+        while visible_end < count
+            && accumulated_height
+                < viewport_height + (props.estimated_item_height * props.overscan as f64)
+        {
+            let height = measurements_val
+                .get(&visible_end)
+                .map(|m| m.height)
+                .unwrap_or(props.estimated_item_height);
             accumulated_height += height;
             visible_end += 1;
         }
@@ -167,13 +166,16 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
 
     let (start_idx, end_idx) = visible_range();
     let measurements_val = measurements();
-    let offset_top = measurements_val.get(&start_idx).map(|m| m.offset).unwrap_or(0.0);
+    let offset_top = measurements_val
+        .get(&start_idx)
+        .map(|m| m.offset)
+        .unwrap_or(0.0);
 
     // Generate visible items
     let items = (start_idx..end_idx).map(|i| {
         let item_content = props.item_content.clone();
         let mut heights_signal = item_heights;
-        
+
         rsx! {
             div {
                 key: "{i}",
@@ -192,7 +194,7 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
 
     rsx! {
         div {
-            style: "height: {props.height}; overflow-y: auto; position: relative;",
+            style: "overflow-y: auto; position: relative;",
             onscroll: move |e: Event<ScrollData>| {
                 scroll_top.set(e.data.scroll_top());
             },
