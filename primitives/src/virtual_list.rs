@@ -186,22 +186,65 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
         .map(|m| m.offset)
         .unwrap_or(0.0);
 
+    // Setup ResizeObserver for dynamic item measurement
+    let observer_setup = use_memo(move || {
+        format!(
+            r#"const observer = new ResizeObserver((entries) => {{
+                for (const entry of entries) {{
+                    const index = parseInt(entry.target.getAttribute('data-index'));
+                    const height = entry.contentRect.height;
+                    if (!isNaN(index) && height > 0) {{
+                        dioxus.send({{ index, height }});
+                    }}
+                }}
+            }});
+            
+            // Observe all virtual list items
+            const container = document.currentScript.parentElement;
+            const observeItems = () => {{
+                const items = container.querySelectorAll('[data-virtual-item]');
+                items.forEach(item => observer.observe(item));
+            }};
+            
+            observeItems();
+            const mutationObserver = new MutationObserver(observeItems);
+            mutationObserver.observe(container, {{ childList: true, subtree: true }});
+            
+            await dioxus.recv();
+            observer.disconnect();
+            mutationObserver.disconnect();"#
+        )
+    });
+
+    // Listen for resize events from JavaScript
+    use_effect(move || {
+        let observer_code = observer_setup();
+        let mut eval = document::eval(&observer_code);
+        let mut heights = item_heights;
+
+        spawn(async move {
+            loop {
+                match eval.recv::<serde_json::Value>().await {
+                    Ok(value) => {
+                        if let (Some(index), Some(height)) = (
+                            value.get("index").and_then(|v| v.as_u64()),
+                            value.get("height").and_then(|v| v.as_f64()),
+                        ) {
+                            heights.write().insert(index as usize, height);
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
+    });
+
     // Generate visible items
     let items = (start_idx..end_idx).map(|i| {
         let item_content = props.item_content.clone();
-        let mut heights_signal = item_heights;
 
         rsx! {
-            div {
-                key: "{i}",
-                "data-index": i,
-                onmounted: move |e: MountedEvent| {
-                    spawn(async move {
-                        if let Ok(rect) = e.get_client_rect().await {
-                            heights_signal.write().insert(i, rect.size.height);
-                        }
-                    });
-                },
+            div { key: "{i}", "data-index": i, "data-virtual-item": "true",
                 {item_content.call(i)}
             }
         }

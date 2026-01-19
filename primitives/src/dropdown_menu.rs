@@ -9,11 +9,13 @@ use crate::{
 use dioxus::prelude::*;
 use dioxus_attributes::attributes;
 
+/// Context for the dropdown menu, providing state and focus management to child components.
 #[derive(Clone, Copy)]
-struct DropdownMenuContext {
+pub struct DropdownMenuContext {
     // State
     open: Memo<bool>,
-    set_open: Callback<bool>,
+    /// Callback to set the open state
+    pub set_open: Callback<bool>,
     disabled: ReadSignal<bool>,
 
     // Focus state
@@ -222,6 +224,19 @@ pub fn DropdownMenuTrigger(props: DropdownMenuTriggerProps) -> Element {
     let mut element = use_signal(|| None::<Rc<MountedData>>);
 
     let open = ctx.open;
+
+    use_effect(move || {
+        if *open.read() {
+            // Focus the element on click. Safari does not do this automatically.
+            // https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/button#clicking_and_focus
+            let element = element.peek();
+            if let Some(data) = element.clone() {
+                spawn(async move {
+                    _ = data.set_focus(true).await;
+                });
+            }
+        }
+    });
     let disabled = ctx.disabled;
     let data_state = if open() { "open" } else { "closed" };
 
@@ -244,13 +259,6 @@ pub fn DropdownMenuTrigger(props: DropdownMenuTriggerProps) -> Element {
             let new_open = !open();
             ctx.set_open.call(new_open);
 
-            // Focus the element on click. Safari does not do this automatically.
-            // https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/button#clicking_and_focus
-            if let Some(data) = element() {
-                spawn(async move {
-                    _ = data.set_focus(true).await;
-                });
-            }
         },
         onblur: move |_| {
             if !ctx.focus.any_focused() {
@@ -509,7 +517,11 @@ pub fn DropdownMenuSub(props: DropdownMenuSubProps) -> Element {
     let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
     let trigger_id = use_unique_id();
 
-    use_context_provider(|| DropdownSubContext { open, set_open, trigger_id });
+    use_context_provider(|| DropdownSubContext {
+        open,
+        set_open,
+        trigger_id,
+    });
 
     let set_open_clone = set_open.clone();
 
