@@ -13,6 +13,7 @@ use dioxus_core::AttributeValue::Text;
 
 pub use dioxus_attributes;
 
+//pub mod resize_observer;
 pub mod accordion;
 pub mod alert_dialog;
 pub mod aspect_ratio;

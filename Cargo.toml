@@ -7,6 +7,8 @@ dioxus-primitives = { path = "primitives" }
 
 # dioxus = "0.7.0"
 # dioxus-rsx = "0.7.1"
+dioxus = { git = "https://github.com/molikto/dioxus", branch = "my/main" }
+dioxus-rsx = { git = "http://github.com/molikto/dioxus", branch = "my/main" }
 tracing = { version = "0.1", features = ["std"] }
 
 [profile.release]
