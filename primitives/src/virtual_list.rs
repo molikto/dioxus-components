@@ -146,35 +146,36 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
             return (0, 0);
         }
 
-        // Binary search for start index
-        let mut start = 0;
-        let mut end = count;
-        while start < end {
-            let mid = (start + end) / 2;
-            let offset = measurements_val.get(&mid).map(|m| m.offset).unwrap_or(0.0);
-            if offset < scroll {
-                start = mid + 1;
+        // Binary search for start index - find first item that overlaps with viewport
+        // An item overlaps if its bottom edge (offset + height) > scroll_top
+        let mut low = 0;
+        let mut high = count;
+        while low < high {
+            let mid = (low + high) / 2;
+            let m = measurements_val.get(&mid);
+            let offset = m.map(|m| m.offset).unwrap_or(mid as f64 * props.estimated_item_height);
+            let height = m.map(|m| m.height).unwrap_or(props.estimated_item_height);
+            if offset + height <= scroll {
+                low = mid + 1;
             } else {
-                end = mid;
+                high = mid;
             }
         }
-        let start = start.saturating_sub(props.overscan);
+        let start = low.saturating_sub(props.overscan);
 
-        // Find end index
-        let mut visible_end = start;
-        let mut accumulated_height = 0.0;
-        while visible_end < count
-            && accumulated_height
-                < viewport_height + (props.estimated_item_height * props.overscan as f64)
-        {
-            let height = measurements_val
-                .get(&visible_end)
-                .map(|m| m.height)
-                .unwrap_or(props.estimated_item_height);
-            accumulated_height += height;
-            visible_end += 1;
+        // Find end index - find first item whose top edge is below the viewport bottom
+        // An item is below viewport if offset >= scroll + viewport_height
+        let viewport_bottom = scroll + viewport_height;
+        let mut end = start;
+        for i in start..count {
+            let m = measurements_val.get(&i);
+            let offset = m.map(|m| m.offset).unwrap_or(i as f64 * props.estimated_item_height);
+            if offset >= viewport_bottom {
+                break;
+            }
+            end = i + 1;
         }
-        let end = visible_end.min(count);
+        let end = (end + props.overscan).min(count);
 
         (start, end)
     });
