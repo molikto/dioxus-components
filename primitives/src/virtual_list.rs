@@ -182,10 +182,6 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
 
     let (start_idx, end_idx) = visible_range();
     let measurements_val = measurements();
-    let offset_top = measurements_val
-        .get(&start_idx)
-        .map(|m| m.offset)
-        .unwrap_or(0.0);
 
     // Setup ResizeObserver for dynamic item measurement
     let observer_setup = use_memo(move || {
@@ -240,12 +236,20 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
         });
     });
 
-    // Generate visible items
+    // Generate visible items - each item positioned absolutely at its own offset
     let items = (start_idx..end_idx).map(|i| {
         let item_content = props.item_content.clone();
+        let item_offset = measurements_val
+            .get(&i)
+            .map(|m| m.offset)
+            .unwrap_or(i as f64 * props.estimated_item_height);
 
         rsx! {
-            div { key: "{i}", "data-index": i, "data-virtual-item": "true",
+            div {
+                key: "{i}",
+                "data-index": i,
+                "data-virtual-item": "true",
+                style: "position: absolute; top: {item_offset}px; left: 0; right: 0;",
                 {item_content.call(i)}
             }
         }
@@ -266,14 +270,8 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
             },
             ..props.attributes,
 
-            // Spacer to create scrollable area
-            div { style: "height: {total_height}px; position: relative;",
-
-                // Visible items container
-                div { style: "position: absolute; top: {offset_top}px; left: 0; right: 0;",
-                    {items}
-                }
-            }
+            // Spacer to create scrollable area - items are positioned absolutely within this
+            div { style: "height: {total_height}px; position: relative;", {items} }
         }
     }
 }
