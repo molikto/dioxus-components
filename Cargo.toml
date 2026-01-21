@@ -5,7 +5,8 @@ members = ["primitives", "preview", "test-harness", "dioxus-attributes"]
 [workspace.dependencies]
 dioxus-primitives = { path = "primitives" }
 
-dioxus = "0.7.0"
+# dioxus = "0.7.0"
+# dioxus-rsx = "0.7.1"
 tracing = { version = "0.1", features = ["std"] }
 
 [profile.release]
