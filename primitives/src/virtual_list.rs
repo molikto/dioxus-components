@@ -184,23 +184,42 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
     let measurements_val = measurements();
 
     // Setup ResizeObserver for dynamic item measurement
-    let observer_setup = use_memo(move || {
-        format!(
-            r#"const observer = new ResizeObserver((entries) => {{
+    // We need a unique ID for this virtual list instance to find its elements
+    let list_id = use_hook(|| {
+        static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    });
+
+    // Listen for resize events from JavaScript
+    use_effect(move || {
+        let observer_code = format!(
+            r#"
+            const listId = '{list_id}';
+            const observer = new ResizeObserver((entries) => {{
                 for (const entry of entries) {{
                     const index = parseInt(entry.target.getAttribute('data-index'));
-                    const height = entry.contentRect.height;
+                    const height = entry.borderBoxSize?.[0]?.blockSize || entry.contentRect.height;
                     if (!isNaN(index) && height > 0) {{
                         dioxus.send({{ index, height }});
                     }}
                 }}
             }});
             
-            // Observe all virtual list items
-            const container = document.currentScript.parentElement;
+            // Find the virtual list container by its data attribute
+            const container = document.querySelector('[data-virtual-list-id="{list_id}"]');
+            if (!container) {{
+                console.warn('Virtual list container not found');
+                return;
+            }}
+            
             const observeItems = () => {{
                 const items = container.querySelectorAll('[data-virtual-item]');
-                items.forEach(item => observer.observe(item));
+                items.forEach(item => {{
+                    if (!item._observed) {{
+                        observer.observe(item);
+                        item._observed = true;
+                    }}
+                }});
             }};
             
             observeItems();
@@ -209,13 +228,10 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
             
             await dioxus.recv();
             observer.disconnect();
-            mutationObserver.disconnect();"#
-        )
-    });
-
-    // Listen for resize events from JavaScript
-    use_effect(move || {
-        let observer_code = observer_setup();
+            mutationObserver.disconnect();
+            "#
+        );
+        
         let mut eval = document::eval(&observer_code);
         let mut heights = item_heights;
 
@@ -257,6 +273,7 @@ pub fn VirtualList(props: VirtualListProps) -> Element {
 
     rsx! {
         div {
+            "data-virtual-list-id": list_id,
             style: "overflow-y: auto; position: relative;",
             onscroll: move |e: Event<ScrollData>| {
                 scroll_top.set(e.data.scroll_top());
